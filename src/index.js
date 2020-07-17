@@ -2,6 +2,7 @@ const path = require('path')
 const http = require('http')
 const express = require ('express')
 const socketio = require('socket.io')
+const Filter = require('bad-words')
 
 const app = express()
 const server = http.createServer(app)
@@ -12,7 +13,6 @@ const port = process.env.PORT || 3000
 
 app.use(express.static(path_public))
 
-let count=0
 let welcome = 'Welcome To The Chat Room! Enjoy!'
 
 io.on('connection', (socket)=>{
@@ -22,20 +22,25 @@ io.on('connection', (socket)=>{
     
     console.log('socket connected...')
 
-    socket.emit('countUpdated', count)
     socket.emit('message', welcome)
 
     // notify all users about a new user joining the chat
     socket.broadcast.emit('message', 'A new user has joined us')
 
-    socket.on('inc', ()=>{
-        count++
-        // socket.emit('countUpdated', count)
-        io.emit('countUpdated', count)
+    socket.on('sendMessage', (msg, callback)=>{
+        const filter = new Filter()
+
+        if (filter.isProfane(msg)) {
+            return callback('Profanity is not allowed!')
+        }
+        
+        io.emit('message', msg)
+        callback()
     })
 
-    socket.on('sendMessage', (msg)=>{
-        io.emit('message', msg)
+    socket.on('sendLocation', (coords, callback)=>{
+        io.emit('message', `https://google.com/maps?q=${coords.latitude},${coords.longitude}`)
+        callback()
     })
 
     socket.on('disconnect', ()=>{
